@@ -802,6 +802,96 @@ when it says build success then means the job is ready fro my pc this was the co
  PART TWO NEXT
  
    ![Screenshot from 2024-07-18 12-22-26](https://github.com/user-attachments/assets/df7f2c29-baf4-40b3-a750-1f36a1b5ff75)
+In the following project we will be doing data modelling using dbt in our project and usiupto the 3NF  data normailzaition we will normalize our data .
+we will be creating the dimension tables as the following columns
+
+#### dim_customers.sql
+```
+{{ config(materialized='table') }}
+
+
+with dim_customers as (select * from{{source('postgres','transaction')}})
+
+select
+transaction_id,
+customer_id,
+city,
+region
+
+from dim_customers 
+```
+#### dim_dates.sql
+```
+{{ config(materialized='table') }}
+
+WITH dim_dates AS (
+    SELECT
+        transaction_id,
+        transaction_date,
+        TO_CHAR(transaction_date, 'YYYY-MM-DD') AS sales_date
+    FROM {{ source('postgres', 'transaction') }}
+)
+
+SELECT
+    transaction_id,
+    sales_date
+FROM dim_dates
+```
+#### dim_products.sql
+```
+{{ config(materialized='table') }}
+
+with dim_products as (select * from{{source ('postgres','transaction')}})
+
+select
+transaction_id,
+product_id,
+product_name AS phone_name,
+product_price AS phone_price,
+product_quantity AS phones_sold,
+payment_method
+
+from dim_products 
+```
+
+we will then create our fact _sales table as follows
+
+### Fact_sales.sql
+```
+{{ config(materialized='table') }}
+
+WITH fact_sales AS (
+    SELECT 
+        transaction_id,
+        customer_id,
+        product_id,
+        transaction_date,
+        product_name,
+        product_price,
+        product_quantity,
+        total_amount
+    FROM {{ source('postgres', 'transaction') }}
+)
+
+SELECT DISTINCT
+    fs.transaction_id,
+    fs.customer_id,
+    fs.product_id,
+    d.sales_date,
+    fs.product_name AS phone_name,
+    fs.product_price  AS phone_price,
+    fs.product_quantity as phones_sold,
+    fs.total_amount
+FROM fact_sales fs
+INNER JOIN {{ ref('dim_dates') }} d ON fs.transaction_id = d.transaction_id
+INNER JOIN {{ ref('dim_customers') }} c ON fs.customer_id = c.customer_id
+INNER JOIN {{ ref('dim_products') }} p ON fs.product_id = p.product_id
+```
+we just need to initialize and create a connection to the dbt_project.yml and the project you can run using 
+```dbt run```
+
+Final pat of the project we can just expose the port to powerbi for furhther queying.Also after querying the data we connect to dbeaver to get this data and do further querying of our data.
+
 
 
 
